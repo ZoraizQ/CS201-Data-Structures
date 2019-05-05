@@ -13,6 +13,7 @@ Graph::Graph(char* file, bool isUnitLength=false)
 	if (inFile.is_open())
 	{
 		string currPerson;
+		int newid = 0;
 		inFile >> currPerson; //reads the "PEOPLE" header
 		while (inFile >> currPerson) //every line has a person, read the next person
 		{
@@ -22,8 +23,10 @@ Graph::Graph(char* file, bool isUnitLength=false)
 			node* newPerson = new node();
 			newPerson->name = currPerson;
 			newPerson->visit = 0;
+			newPerson->ID = newid;
 			//vector edge will be clear for a new node formed
 			people.push_back(newPerson);
+			newid++;
 		}
 		
 		cout << "Printing all node names found:\n";
@@ -171,7 +174,7 @@ bool Graph::Reachable(string start, string dest)
 edge getMinUnvisEdge(vector<edge> edgeList){
 	float minWeight = INT32_MAX;
 	edge minEdge;
-	minEdge.weight = -1; // for NULL checks
+	minEdge.weight = -1;
 	for(int i = 0; i < edgeList.size(); i++){
 		if (edgeList[i].Dest->visit == 0 && edgeList[i].weight < minWeight){
 			minWeight = edgeList[i].weight;
@@ -231,23 +234,13 @@ struct Comparator
 	}
 };
 
-void showpq(priority_queue <node*, vector<node*>, Comparator> gq) 
-{ 
-    priority_queue <node*, vector<node*>, Comparator> g = gq; 
-    while (!g.empty()) 
-    { 
-        cout << '\t' << g.top()->name << " " << g.top()->distance; 
-        g.pop(); 
-    } 
-    cout << '\n'; 
-} 
-
 vector<node*> Graph::Prims()
 {
 	resetAllVisited(people);
 	resetAllDistancesINF(people);
 	vector<node*> tree;
 	priority_queue <node*, vector<node*>, Comparator> minq;
+	
 	node* start = getMinUnvisEdge(connections).Origin;
 	start->distance = 0;
 	for (int i = 0; i < people.size(); i++){
@@ -266,31 +259,150 @@ vector<node*> Graph::Prims()
 				connNode->p = topNode; // assign predecessor
 				connNode->distance = currCost; // fix cost 
 				vector<node*> copier;
-				while (!minq.empty()) 
-			    { 
+				while (!minq.empty()){ 
 			        copier.push_back(minq.top());
 			        minq.pop();
 			    } 
 			    for (int c= 0; c < copier.size(); c++){
 			    	minq.push(copier[c]);
 			    }
-			    
 			}
 		}
 	}
 
-	resetAllVisited(people);
+	return tree;
+}
 
-	
-	for (int i = 0; i < tree.size(); i++){
-		cout << tree[i]->name << " ";
+edge getMinUnusedEdge(vector<edge> edgeList){
+	float minWeight = INT32_MAX;
+	edge minEdge;
+	for(int i = 0; i < edgeList.size(); i++){
+		if (edgeList[i].used == false && edgeList[i].weight < minWeight){
+			minWeight = edgeList[i].weight;
+			minEdge = edgeList[i];
+		}
 	}
-	cout << endl;
+	return minEdge;
+}
+
+bool anyNodesUnvisited(vector<node*> nodes){
+	for(int i = 0; i < nodes.size(); i++){
+		if (nodes[i]->visit == 0){ //unvisited node found
+			return true;
+		}
+	}
+	return false;
+}
+
+node* getNodeByID(int myid, vector<node*> people){ //reverse lookup is easy as node->ID
+	for (int i = 0; i < people.size(); i++){
+		if (people[i]->ID == myid){
+			return people[i];
+		}
+	}
+	return NULL;
+}
+
+int Find(int n, vector<int> &par){ //pass by ref
+	if (par[n] == -1) 
+		return n; //is self's set
+	else
+		return Find(par[n], par); //1 goes to 2, and 2 goes to 3 and 3 goes to -1 then this returns 3 
+}
+
+void Union(int x, int y, vector<int> &par){ //pass by ref
+	int xfound = Find(x, par);
+	int yfound = Find(y, par);
+	if(xfound != yfound){
+		par[xfound] = yfound; //par[0] = 1
+	}
 }
 
 vector<node*> Graph::Kruskal()
 {
+	vector<int> parent;
+	for (int i = 0; i < people.size(); i++){
+		parent.push_back(-1); //all entries initially NULL fixed, self's set
+	}
 
+	resetAllVisited(people);
+	vector<edge> usedEdges;
+
+	for (int i = 0; i < connections.size(); i++){
+		connections[i].used = false;
+	}
+
+	//minEdge is an unvisited edge
+	edge minEdge = getMinUnusedEdge(connections); //for each found edge, we make subsets using both nodes
+	// if both of the nodes are present in same subset, cycle exists
+	int x = minEdge.Origin->ID;
+	//corresponding node pushed in parentTree vector, to keep track e.g. 0 for George, 1 for Nawaz
+	int y = minEdge.Dest->ID;
+	
+	//while (usedEdges.size() != people.size()-1){ 
+	while(anyNodesUnvisited(people)){ //keep adding edges until all people visited
+		bool rejected = false; //forms a cycle etc.
+		//checking if minEdge creates a cycle, if so it will be rejected
+		if (Find(x, parent) == Find(y, parent)){
+			rejected = true;
+		}
+		else{
+			Union(x,y,parent);
+		}
+
+		for (int i = 0; i < connections.size(); i++){ // find edge in Connections, and turn its nodes to visited
+			if (connections[i].Origin->name == minEdge.Origin->name && connections[i].Dest->name == minEdge.Dest->name){
+				connections[i].used = true; //used, and visited
+				connections[i].Origin->visit = 1;
+				connections[i].Dest->visit = 1;
+			}
+		}
+
+		if (!rejected) //used, but may be rejected here
+			usedEdges.push_back(minEdge);
+		minEdge = getMinUnusedEdge(connections);
+		x = minEdge.Origin->ID;
+		y = minEdge.Dest->ID;
+	}
+
+	vector<node*> tree;
+	/*for (int i = 0; i < parent.size(); i++){
+		node* a = getNodeByID(i, people);
+		node* b = getNodeByID(parent[i], people);
+		if (a != NULL){
+		cout << a->name << " ";
+		tree.push_back(a);
+		}
+		if (b != NULL){
+		cout << b->name;
+		tree.push_back(b);
+		}
+		cout << endl;
+	}*/
+	for (int i = 0; i < usedEdges.size(); i++){
+		node* a = usedEdges[i].Origin;
+		node* b = usedEdges[i].Dest;
+		if (a != NULL && b != NULL){
+		//cout << a->name << " " << b->name;
+		tree.push_back(a);
+		tree.push_back(b);
+		}
+		//cout << endl;
+	}
+	/*resetAllVisited(people);
+	for(int i =0; i < usedEdges.size(); i++){
+	cout << usedEdges[i].Origin->name << " " << usedEdges[i].Dest->name << " " << usedEdges[i].weight << endl;
+	if (usedEdges[i].Origin->visit == 0){
+	tree.push_back(usedEdges[i].Origin);
+	usedEdges[i].Origin->visit = 1;
+	}
+	if (usedEdges[i].Dest->visit == 0){
+	tree.push_back(usedEdges[i].Dest);
+	usedEdges[i].Dest->visit = 1;
+	}
+	}
+*/
+	return tree;
 }
 
 
@@ -324,7 +436,7 @@ vector<string> Graph::Dijkstra(string start, string dest, float &d)
 		for (int i = 0; i < mdNode->edges.size(); i++){
 			node* an = mdNode->edges[i].Dest; //current adjacent node
 			an->p = mdNode; //update previous pointer to mdNode
-			cout << an->name << "'s prev " << an->p->name << endl;
+			//cout << an->name << "'s prev " << an->p->name << endl;
 			
 			if (an->name == dest){
 				vector<string> reversePath;
@@ -353,21 +465,8 @@ vector<string> Graph::Dijkstra(string start, string dest, float &d)
 		
 	}
 
-	
-	vector<string> reversePath;
-	node* DN = getNodeByName(people,dest);
-	while (DN->name != start){
-		reversePath.push_back(DN->name);
-		DN = DN->p;	
-	}
-	reversePath.push_back(DN->name);
-		
-	for (int i = reversePath.size()-1; i >= 0;i--){
-		shortestPath.push_back(reversePath[i]);
-	}
 
-	cout << "Path Sum: " << getPathSum(connections, shortestPath) << endl;
-	
+	shortestPath.clear();
 	return shortestPath; //empty vector object returned
 }
 
@@ -394,8 +493,8 @@ int main()
 	cout << a << " is " << v.size()-1 << " hops away from " << b; 
 	cout << endl << endl;
 
-	//What about Mannan and Trump?
-	a = "Trump"; b = "Mannan";
+	//What about Mannan?
+	a = "Mannan"; b = "Trump";
 	cout << "Printing shortest path by Dijkstra from " << a << " to " << b << ": "<< endl;
 	v = G.Dijkstra(a,b,f);
 	if (v.empty()){
@@ -412,7 +511,6 @@ int main()
 		cout << "As seen from the printed shortest path sums, Mannan has the smaller value of\npath when isUnitLenght == false, and so a higher index of friendship with Trump." << endl;
 	
 
-	G.Prims();
 	/*
 	Run the MST on both unit weight graph and weighted graph. Could there
 	exist more than one MST for one of the graphs? What implications can you
@@ -420,6 +518,23 @@ int main()
 	have from the MSTs you have produced? Can you think of other
 	applications of MST in terms of social connection graphs?
 	*/
+	cout << "\nMST by Kruskal: " <<endl;
+	vector<node*> kruskalMST = G.Kruskal();
+	for(int i =0; i < kruskalMST.size(); i++){
+	cout << kruskalMST[i]->name;
+	if (i % 2 == false)
+		cout << " - ";
+	else
+		cout << ",  ";
+	}
+	cout << endl << endl;
+
+	cout << "MST by Prims: " << endl;
+	vector<node*> primsMST = G.Prims();
+	for(int i =0; i < primsMST.size(); i++){
+	cout << primsMST[i]->name << " ";
+	}
+	cout << endl;
 }
 
 #endif

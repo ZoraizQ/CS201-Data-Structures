@@ -34,6 +34,7 @@ class node //N -> (Name, Edge vector), visit
 		vector<edge> edges; // edges connected to node
 		int distance;
 		node* p; // previous pointer
+		int ID;
 
 };
 
