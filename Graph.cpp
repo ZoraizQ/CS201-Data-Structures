@@ -74,16 +74,18 @@ Graph::Graph(char* file, bool isUnitLength=false)
 		inFile.close();
 	}
 	
+	/*
 	cout << "Printing all connections details found:\n";
 	for (int i = 0; i < connections.size(); i++){
 		cout << "Connection found between " << connections[i].Origin->name << " and " << connections[i].Dest->name << " of weight " << connections[i].weight << endl;
 	}
+	*/
 
-	/*for (int i = 0; i < people.size(); i++){
+	for (int i = 0; i < people.size(); i++){
 		for (int j = 0; j < people[i]->edges.size(); j++){
-			cout << people[i]->name << " has an edge to " << people[i]->edges[j].Dest->name << endl;
+			cout << people[i]->name << " - " << people[i]->edges[j].Dest->name << endl;
 		}
-	}*/
+	}
 }
 
 void Graph::display(node* temp)
@@ -106,7 +108,7 @@ void printStrVector(vector<string> v){
 	for (int i = 0; i < v.size(); i++){
 		cout << v[i];
 		if (i != v.size()-1)
-			cout <<" -> ";
+			cout <<"-";
 	}
 	cout << endl;
 }
@@ -157,13 +159,12 @@ bool Graph::Reachable(string start, string dest)
 		bfsQ.pop();
 
 		for (int i = 0; i < front->edges.size(); i++){
-			if (front->edges[i].Origin->name == front->name){ // if the current front has any connected edges (Origin node == front node by name)
-				//if not already visited, add edge's dest node to queue after it is marked as visited
-				node* pushNode = front->edges[i].Dest; // pushNode == DEST
-				if (pushNode->visit == 0){
-					pushNode->visit = 1;
-					bfsQ.push(pushNode);
-				}
+		 // if the current front has any connected edges (Origin node == front node by name)
+			//if not already visited, add edge's dest node to queue after it is marked as visited
+			node* pushNode = front->edges[i].Dest; // pushNode == DEST
+			if (pushNode->visit == 0){
+				pushNode->visit = 1;
+				bfsQ.push(pushNode);
 			}
 		}
 	}
@@ -234,9 +235,29 @@ struct Comparator
 	}
 };
 
+void printTreeChildren(vector<node*> tree){ //level order m-ary
+	if (tree.empty())
+		return;
+	resetAllVisited(tree);
+	int level = 0;
+	string prev = "";
+	for (int i = 0; i < tree.size(); i+=2){
+		if (tree[i]->visit == 0){
+			cout << tree[i]->name << "'s children: " << endl;
+			for (int j = 0; j < tree.size(); j+=2){
+				if (tree[j]->name == tree[i]->name){
+					cout << tree[j+1]->name << " ";
+				}
+			}
+			cout << endl << endl;
+		}
+		tree[i]->visit = 1;
+	}
+}
+
 vector<node*> Graph::Prims()
 {
-	resetAllVisited(people);
+	resetAllVisited(people); //in minHeap
 	resetAllDistancesINF(people);
 	vector<node*> tree;
 	priority_queue <node*, vector<node*>, Comparator> minq;
@@ -244,30 +265,37 @@ vector<node*> Graph::Prims()
 	node* start = getMinUnvisEdge(connections).Origin;
 	start->distance = 0;
 	for (int i = 0; i < people.size(); i++){
-		minq.push(people[i]);
+		minq.push(people[i]); //in minHeap, visited = 0
 	} //heap ready
 	
+	node* topNode;
 	while (!minq.empty()){
-		node* topNode = minq.top();
+		topNode = minq.top();
+		if (topNode->p != NULL){
+		//cout << topNode->p->name << "->" << topNode->name << endl;
+		tree.push_back(topNode->p);
 		tree.push_back(topNode);
-		topNode->visit = 1; // make visited (added to minq)
+		}
+		topNode->visit = 1; // make visited (removed from minq)
 		minq.pop();
 		for (int i = 0; i < topNode->edges.size(); i++){
 			node* connNode = topNode->edges[i].Dest; //connected destination node by this edge
 			float currCost = topNode->edges[i].weight; // current cost of this edge (from node to connection)
 			if (connNode->visit == 0 && currCost < connNode->distance){
-				connNode->p = topNode; // assign predecessor
-				connNode->distance = currCost; // fix cost 
-				vector<node*> copier;
-				while (!minq.empty()){ 
-			        copier.push_back(minq.top());
-			        minq.pop();
-			    } 
-			    for (int c= 0; c < copier.size(); c++){
-			    	minq.push(copier[c]);
-			    }
+				topNode->edges[i].Dest->p = topNode; // assign predecessor
+				//cout << connNode->p->name << " -> " << connNode->name << endl;
+				topNode->edges[i].Dest->distance = currCost; // fix cost 
 			}
 		}
+
+		vector<node*> copier; //alternative of decrease key, rebuild heap lol
+		while (!minq.empty()){ 
+	        copier.push_back(minq.top());
+	        minq.pop();
+	    } 
+	    for (int c= 0; c < copier.size(); c++){
+	    	minq.push(copier[c]);
+	    }
 	}
 
 	return tree;
@@ -415,7 +443,6 @@ vector<string> Graph::Dijkstra(string start, string dest, float &d)
 	}
 
 	vector<string> shortestPath; // empty init
-	set<string> checked;
 	// initialise all distance values as INT_MAX (+inf)
 	resetAllVisited(people);
 	resetAllDistancesINF(people);
@@ -431,7 +458,6 @@ vector<string> Graph::Dijkstra(string start, string dest, float &d)
 		//cout << "Minimum distance node: " << mdNode->name << endl;
 		mdNode->visit = 1;
 
-		checked.insert(mdNode->name);
 		//for every connected/adjacent node, update their distance values
 		for (int i = 0; i < mdNode->edges.size(); i++){
 			node* an = mdNode->edges[i].Dest; //current adjacent node
@@ -439,6 +465,10 @@ vector<string> Graph::Dijkstra(string start, string dest, float &d)
 			//cout << an->name << "'s prev " << an->p->name << endl;
 			
 			if (an->name == dest){
+				float sumD = mdNode->distance + mdNode->edges[i].weight; //get total distance up to this node with the addition of the edge weight to this node
+				if (sumD < an->distance){ // if this new path has a distance less than current distance value of this node
+					an->distance = sumD; //then update distance value to this sum
+				}
 				vector<string> reversePath;
 				node* DN = getNodeByName(people,dest);
 				while (DN->name != start){
@@ -451,7 +481,8 @@ vector<string> Graph::Dijkstra(string start, string dest, float &d)
 					shortestPath.push_back(reversePath[i]);
 				}
 
-				cout << "Path Sum: " << getPathSum(connections, shortestPath) << endl;
+				//cout << "Path Sum: " << getPathSum(connections, shortestPath) << endl;
+				cout << "Path Sum: " << an->distance << endl;
 				return shortestPath;
 			}
 			
@@ -512,18 +543,17 @@ int main()
 	
 
 	/*
-	Run the MST on both unit weight graph and weighted graph. Could there
-	exist more than one MST for one of the graphs? What implications can you
-	draw from result of both runs? What benefit can a social media website
-	have from the MSTs you have produced? Can you think of other
-	applications of MST in terms of social connection graphs?
+	Run the MST on both unit weight graph and weighted graph.
+	Done.
 	*/
 	cout << "\nMST by Kruskal: " <<endl;
 	vector<node*> kruskalMST = G.Kruskal();
+	printTreeChildren(kruskalMST);
+	cout << "BRANCH PRINTING " << endl;
 	for(int i =0; i < kruskalMST.size(); i++){
 	cout << kruskalMST[i]->name;
 	if (i % 2 == false)
-		cout << " - ";
+		cout << "-";
 	else
 		cout << ",  ";
 	}
@@ -531,10 +561,30 @@ int main()
 
 	cout << "MST by Prims: " << endl;
 	vector<node*> primsMST = G.Prims();
+	printTreeChildren(primsMST);
+	cout << "BRANCH PRINTING " << endl;
 	for(int i =0; i < primsMST.size(); i++){
-	cout << primsMST[i]->name << " ";
+	cout << primsMST[i]->name;
+	if (i % 2 == false)
+		cout << "-";
+	else
+		cout << ",  ";
 	}
 	cout << endl;
+	/*
+	Could there exist more than one MST for one of the graphs? 
+	Yes. There can be multiple spanning trees for the unit length weight of the graphs. (Each having the same cost)
+
+	What implications can you draw from result of both runs? 
+	
+
+	What benefit can a social media website have from the MSTs you have produced? 
+	
+
+	Can you think of other applications of MST in terms of social connection graphs?
+	
+
+	*/
 }
 
 #endif
