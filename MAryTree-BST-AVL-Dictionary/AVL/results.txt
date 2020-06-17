@@ -1,0 +1,59 @@
+ 3e-06 asterion
+ 1e-06 bribeless
+ 2e-06 confederates
+ 2e-06 drip-dried
+ 2e-06 economists
+ 2e-06 fozier
+ 2e-06 gravamem
+ 2e-06 hepler
+ 1e-06 ilaire
+ 1e-06 jumbo
+ 1e-06 kalon
+ 2e-06 like-sex
+ 3e-06 machine-wrought
+ 2e-06 nonexplanative
+ 2e-06 overcalled
+ 2e-06 periclase
+ 1e-06 quasi-cordial
+ 2e-06 reichsmarks
+ 1e-06 self-energizing
+ 2e-06 townishly
+ 1e-06 unhating
+ 1e-06 vernon
+ 2e-06 whetted
+ 2e-06 xenos
+ 2e-06 yous
+ 1e-06 zoomechanics
+
+FOR BST ^^
+
+ 7e-06 asterion
+ 3e-06 bribeless
+ 3e-06 confederates
+ 2e-06 drip-dried
+ 5e-06 economists
+ 2e-06 fozier
+ 3e-06 gravamem
+ 4e-06 hepler
+ 3e-06 ilaire
+ 2e-06 jumbo
+ 4e-06 kalon
+ 2e-06 like-sex
+ 3e-06 machine-wrought
+ 2e-06 nonexplanative
+ 3e-06 overcalled
+ 4e-06 periclase
+ 3e-06 quasi-cordial
+ 5e-06 reichsmarks
+ 3e-06 self-energizing
+ 4e-06 townishly
+ 2e-06 unhating
+ 3e-06 vernon
+ 4e-06 whetted
+ 4e-06 xenos
+ 3e-06 yous
+ 5e-06 zoomechanics
+
+FOR AVL^^
+AVL -- Time to insert 466547 words: 4111.95seconds 
+
